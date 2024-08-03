@@ -1,5 +1,6 @@
 package com.example.libraryManagementSystem;
 
+import com.example.libraryManagementSystem.exception.ResourceNotFoundException;
 import com.example.libraryManagementSystem.model.Book;
 import com.example.libraryManagementSystem.model.BorrowingRecord;
 import com.example.libraryManagementSystem.model.Patron;
@@ -10,7 +11,10 @@ import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
+import org.springframework.cache.concurrent.ConcurrentMapCacheManager;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -22,7 +26,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
 
-@SpringBootTest
 public class BorrowingRecordServiceTest {
 
     @Mock
@@ -31,89 +34,153 @@ public class BorrowingRecordServiceTest {
     @InjectMocks
     private BorrowingRecordService borrowingRecordService;
 
-    private BorrowingRecord borrowingRecord;
-    private Book book;
-    private Patron patron;
-
-    public BorrowingRecordServiceTest() {
+    @BeforeEach
+    void setUp() {
         MockitoAnnotations.openMocks(this);
     }
 
-    @BeforeEach
-    void setUp() {
-        book = new Book();
-        book.setId(1L);
-
-        patron = new Patron();
-        patron.setId(1L);
-
-        borrowingRecord = new BorrowingRecord();
-        borrowingRecord.setId(1L);
-        borrowingRecord.setBook(book);
-        borrowingRecord.setPatron(patron);
-        borrowingRecord.setBorrowDate(LocalDate.now());
-    }
-
     @Test
-    void testGetAllBorrowingRecords() {
+    void getAllBorrowingRecords() {
+        BorrowingRecord record1 = new BorrowingRecord();
+        BorrowingRecord record2 = new BorrowingRecord();
         List<BorrowingRecord> records = new ArrayList<>();
-        records.add(borrowingRecord);
+        records.add(record1);
+        records.add(record2);
+
         when(borrowingRecordRepository.findAll()).thenReturn(records);
 
         List<BorrowingRecord> result = borrowingRecordService.getAllBorrowingRecords();
 
-        assertEquals(1, result.size());
-        assertEquals(borrowingRecord, result.get(0));
+        assertEquals(2, result.size());
+        verify(borrowingRecordRepository, times(1)).findAll();
     }
 
     @Test
-    void testGetBorrowingRecordById() {
-        when(borrowingRecordRepository.findById(anyLong())).thenReturn(Optional.of(borrowingRecord));
+    void getBorrowingRecordById_ExistingId_ReturnsRecord() {
+        Long id = 1L;
+        BorrowingRecord record = new BorrowingRecord();
+        record.setId(id);
 
-        Optional<BorrowingRecord> result = borrowingRecordService.getBorrowingRecordById(1L);
+        when(borrowingRecordRepository.findById(id)).thenReturn(Optional.of(record));
 
-        assertTrue(result.isPresent());
-        assertEquals(borrowingRecord, result.get());
+        BorrowingRecord result = borrowingRecordService.getBorrowingRecordById(id);
+
+        assertNotNull(result);
+        assertEquals(id, result.getId());
     }
 
     @Test
-    void testCreateBorrowingRecord() {
-        when(borrowingRecordRepository.save(any(BorrowingRecord.class))).thenReturn(borrowingRecord);
+    void getBorrowingRecordById_NonExistingId_ThrowsException() {
+        Long id = 1L;
 
-        BorrowingRecord createdRecord = borrowingRecordService.createBorrowingRecord(borrowingRecord);
+        when(borrowingRecordRepository.findById(id)).thenReturn(Optional.empty());
 
-        assertEquals(borrowingRecord, createdRecord);
+        Exception exception = assertThrows(ResourceNotFoundException.class, () -> {
+            borrowingRecordService.getBorrowingRecordById(id);
+        });
+
+        assertEquals("Borrowing record not found with id: " + id, exception.getMessage());
     }
 
     @Test
-    void testUpdateBorrowingRecord() {
-        when(borrowingRecordRepository.existsById(anyLong())).thenReturn(true);
-        when(borrowingRecordRepository.save(any(BorrowingRecord.class))).thenReturn(borrowingRecord);
+    void createBorrowingRecord_Success() {
+        BorrowingRecord record = new BorrowingRecord();
+        record.setId(1L);
 
-        BorrowingRecord updatedRecord = borrowingRecordService.updateBorrowingRecord(1L, borrowingRecord);
+        when(borrowingRecordRepository.save(any(BorrowingRecord.class))).thenReturn(record);
 
-        assertEquals(borrowingRecord, updatedRecord);
+        BorrowingRecord result = borrowingRecordService.createBorrowingRecord(record);
+
+        assertNotNull(result);
+        assertEquals(1L, result.getId());
     }
 
     @Test
-    void testDeleteBorrowingRecord() {
-        when(borrowingRecordRepository.existsById(anyLong())).thenReturn(true);
+    void updateBorrowingRecord_ExistingId_Success() {
+        Long id = 1L;
+        BorrowingRecord record = new BorrowingRecord();
+        record.setId(id);
 
-        borrowingRecordService.deleteBorrowingRecord(1L);
+        when(borrowingRecordRepository.existsById(id)).thenReturn(true);
+        when(borrowingRecordRepository.save(any(BorrowingRecord.class))).thenReturn(record);
 
-        verify(borrowingRecordRepository, times(1)).deleteById(1L);
+        BorrowingRecord result = borrowingRecordService.updateBorrowingRecord(id, record);
+
+        assertNotNull(result);
+        assertEquals(id, result.getId());
     }
 
     @Test
-    void testFindActiveRecord() {
-        borrowingRecord.setReturnDate(null);
+    void updateBorrowingRecord_NonExistingId_ThrowsException() {
+        Long id = 1L;
+        BorrowingRecord record = new BorrowingRecord();
+
+        when(borrowingRecordRepository.existsById(id)).thenReturn(false);
+
+        Exception exception = assertThrows(ResourceNotFoundException.class, () -> {
+            borrowingRecordService.updateBorrowingRecord(id, record);
+        });
+
+        assertEquals("Borrowing record not found with id: " + id, exception.getMessage());
+    }
+
+    @Test
+    void deleteBorrowingRecord_ExistingId_Success() {
+        Long id = 1L;
+
+        when(borrowingRecordRepository.existsById(id)).thenReturn(true);
+
+        borrowingRecordService.deleteBorrowingRecord(id);
+
+        verify(borrowingRecordRepository, times(1)).deleteById(id);
+    }
+
+    @Test
+    void deleteBorrowingRecord_NonExistingId_ThrowsException() {
+        Long id = 1L;
+
+        when(borrowingRecordRepository.existsById(id)).thenReturn(false);
+
+        Exception exception = assertThrows(ResourceNotFoundException.class, () -> {
+            borrowingRecordService.deleteBorrowingRecord(id);
+        });
+
+        assertEquals("Borrowing record not found with id: " + id, exception.getMessage());
+    }
+
+    @Test
+    void findActiveRecord_ExistingRecord_ReturnsRecord() {
+        Long bookId = 1L;
+        Long patronId = 2L;
+        BorrowingRecord record = new BorrowingRecord();
+        record.setBook(new Book());
+        record.getBook().setId(bookId);
+        record.setPatron(new Patron());
+        record.getPatron().setId(patronId);
+        record.setReturnDate(null);
         List<BorrowingRecord> records = new ArrayList<>();
-        records.add(borrowingRecord);
+        records.add(record);
+
         when(borrowingRecordRepository.findAll()).thenReturn(records);
 
-        Optional<BorrowingRecord> result = borrowingRecordService.findActiveRecord(1L, 1L);
+        BorrowingRecord result = borrowingRecordService.findActiveRecord(bookId, patronId);
 
-        assertTrue(result.isPresent());
-        assertEquals(borrowingRecord, result.get());
+        assertNotNull(result);
+        assertEquals(bookId, result.getBook().getId());
+        assertEquals(patronId, result.getPatron().getId());
+    }
+
+    @Test
+    void findActiveRecord_NonExistingRecord_ThrowsException() {
+        Long bookId = 1L;
+        Long patronId = 2L;
+
+        when(borrowingRecordRepository.findAll()).thenReturn(new ArrayList<>());
+
+        Exception exception = assertThrows(ResourceNotFoundException.class, () -> {
+            borrowingRecordService.findActiveRecord(bookId, patronId);
+        });
+
+        assertEquals("Active borrowing record not found for bookId: " + bookId + " and patronId: " + patronId, exception.getMessage());
     }
 }

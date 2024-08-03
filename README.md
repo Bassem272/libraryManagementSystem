@@ -1,5 +1,3 @@
-# libraryManagementSystem
-Documentaion for the project: 
 
 ```markdown
 # Library Management System
@@ -51,6 +49,11 @@ spring.h2.console.enabled=true
 spring.h2.console.path=/h2-console
 spring.h2.console.settings.web-allow-others=true
 
+# Log messages from your package
+logging.level.com.example.libraryManagementSystem=INFO
+
+# Caching Configuration
+spring.cache.type=simple
    ```
 
 3. **Build the project**:
@@ -190,6 +193,24 @@ spring.h2.console.settings.web-allow-others=true
   DELETE /api/borrow/{id}
   ```
 
+## Validation and Error Handling
+
+- **Validation**: Input validation is implemented for API requests to ensure required fields are provided and data formats are correct. For example, fields are validated for non-null values, proper data formats, and constraints on string lengths.
+
+- **Error Handling**: Exceptions are handled gracefully to return appropriate HTTP status codes and error messages. Custom exceptions, such as `ResourceNotFoundException`, are used to provide meaningful error responses.
+
+## Logging
+
+- **Logging**: Method calls, exceptions, and performance metrics are logged using Aspect-Oriented Programming (AOP). This helps track critical operations and troubleshoot issues effectively.
+
+## Caching
+
+- **Caching**: Spring's caching mechanisms are used to cache frequently accessed data, such as book details and patron information. This improves system performance by reducing the need for repeated database queries.
+
+## Transaction Management
+
+- **Transaction Management**: Declarative transaction management is implemented using Spring's `@Transactional` annotation. This ensures data integrity during critical operations like creating, updating, and deleting records.
+
 ## Testing
 
 ### Running Tests
@@ -282,4 +303,4 @@ Currently, no authentication mechanism is implemented. This can be extended as n
 This document provides a comprehensive guide to set up, run, and test the Library Management System application. For further details, refer to the Spring Boot documentation.
 ```
 
-Save this content into a file named `README.md` and place it in the root directory of your project. This file will provide clear instructions on setting up, running, and interacting with your Library Management System application.
+Save this updated content into your `README.md` file. It now includes sections on validation, error handling, logging, caching, and transaction management as requested.

@@ -9,6 +9,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/patrons")
@@ -44,7 +45,8 @@ public class PatronController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deletePatron(@PathVariable Long id) {
-        if (patronService.getPatronById(id).isPresent()) {
+        Optional<Patron> patronOptional = patronService.getPatronById(id);
+        if (patronOptional.isPresent()) {
             patronService.deletePatron(id);
             return ResponseEntity.noContent().build();
         }

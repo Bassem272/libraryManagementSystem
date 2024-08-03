@@ -1,5 +1,6 @@
 package com.example.libraryManagementSystem.controller;
 
+import com.example.libraryManagementSystem.exception.ResourceNotFoundException;
 import com.example.libraryManagementSystem.model.Book;
 import com.example.libraryManagementSystem.service.BookService;
 import jakarta.validation.Valid;
@@ -25,9 +26,12 @@ public class BookController {
 
     @GetMapping("/{id}")
     public ResponseEntity<Book> getBookById(@PathVariable Long id) {
-        return bookService.getBookById(id)
-                .map(book -> ResponseEntity.ok().body(book))
-                .orElse(ResponseEntity.notFound().build());
+        try {
+            Book book = bookService.getBookById(id);
+            return ResponseEntity.ok().body(book);
+        } catch (ResourceNotFoundException ex) {
+            return ResponseEntity.notFound().build();
+        }
     }
 
     @PostMapping
@@ -44,7 +48,7 @@ public class BookController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteBook(@PathVariable Long id) {
-        if (bookService.getBookById(id).isPresent()) {
+        if (bookService.getBookById(id) != null) {
             bookService.deleteBook(id);
             return ResponseEntity.noContent().build();
         }

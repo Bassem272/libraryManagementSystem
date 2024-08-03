@@ -1,0 +1,23 @@
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns="http://www.ehcache.org/v3"
+        xsi:schemaLocation="http://www.ehcache.org/v3 http://www.ehcache.org/v3/schema/ehcache-core-3.0.xsd">
+
+    <cache alias="bookCache">
+        <key-type>java.lang.Long</key-type>
+        <value-type>com.example.libraryManagementSystem.model.Book</value-type>
+        <heap unit="entries">100</heap>
+    </cache>
+
+    <cache alias="patronCache">
+        <key-type>java.lang.Long</key-type>
+        <value-type>com.example.libraryManagementSystem.model.Patron</value-type>
+        <heap unit="entries">100</heap>
+    </cache>
+
+    <cache alias="borrowingRecordCache">
+        <key-type>java.lang.Long</key-type>
+        <value-type>com.example.libraryManagementSystem.model.BorrowingRecord</value-type>
+        <heap unit="entries">100</heap>
+    </cache>
+
+</config>
