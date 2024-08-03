@@ -1,5 +1,5 @@
 # libraryManagementSystem
-Here is the complete `README.md` file for your project, formatted to include all the details in a single markdown file:
+Documentaion for the project: 
 
 ```markdown
 # Library Management System
